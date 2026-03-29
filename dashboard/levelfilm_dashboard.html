@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>levelFILM — Strategy Dashboard</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#f8f9fb}input,select{outline:none}input:focus,select:focus{border-color:#2563eb!important}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState}=React;
+const mn="'JetBrains Mono','SF Mono','Consolas',monospace";
+const sn="'DM Sans','Helvetica Neue',-apple-system,sans-serif";
+const gn="#16a34a",rd="#dc2626",bl="#2563eb",am="#d97706",tx="#1e293b",sb="#64748b",mt="#94a3b8",bd="#e2e5ea",bg="#f8f9fb",cd="#fff",br="#f1f5f9";
+
+const GD=[{g:"Horror",roi:.37,draw:70,cur:1,rec:20},{g:"Thriller",roi:.08,draw:68,cur:13,rec:5},{g:"Comedy",roi:.10,draw:66,cur:30,rec:25},{g:"Drama",roi:-.05,draw:61,cur:35,rec:25},{g:"Romance",roi:.08,draw:64,cur:15,rec:5},{g:"Action",roi:.02,draw:71,cur:1,rec:0},{g:"Documentary",roi:.30,draw:43,cur:1,rec:5}];
+const TM={Horror:[.07,.41,.51,-.28,.14,.80,.96,.45,.12,.96,.43,-.17],Comedy:[-.24,-.06,-.10,.18,.16,.45,.84,.11,-.46,.19,-.12,.30],Drama:[-.08,-.19,-.19,.00,-.14,.04,.28,-.01,-.32,.01,-.07,.54],Thriller:[.42,-.02,-.05,-.24,-.07,.45,.36,.28,-.36,.21,.06,1.02],Romance:[-.01,.10,-.22,.64,-.16,.29,.37,.13,-.40,.18,.00,.38],Action:[-.10,-.07,-.25,.18,.04,.71,.42,.07,-.40,.12,-.10,1.32],Documentary:[12.01,.30,-.30,-.05,1.50,.20,-1.0,-.50,.20,.30,.80,.10]};
+const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const CM=[{c:"Horror+Thriller",roi:.43,ok:true},{c:"Horror+Drama",roi:.22,ok:true},{c:"Horror+Comedy",roi:-.01,ok:false},{c:"Horror+Action",roi:-.32,ok:false}];
+const BD=[{r:"<$500K",roi:2.50},{r:"$500K–2M",roi:.30},{r:"$2–5M",roi:.24},{r:"$5–10M",roi:-.05},{r:"$10–20M",roi:-.12}];
+const RD=[{r:"<90m",roi:.08},{r:"90–120m",roi:-.01},{r:"120–150m",roi:.27},{r:"150m+",roi:.67}];
+const GM={Horror:.37,Thriller:.08,Comedy:.10,Drama:-.05,Romance:.08,Action:.02,Documentary:.30,Mystery:-.10,Animation:.00,"Science Fiction":-.10,Family:.10};
+const AG=["Horror","Thriller","Comedy","Drama","Romance","Action","Documentary","Mystery","Animation","Science Fiction","Family"];
+
+function hc(v){if(v>.6)return{b:"#15803d",f:"#fff"};if(v>.3)return{b:"#22c55e",f:"#fff"};if(v>.1)return{b:"#bbf7d0",f:"#14532d"};if(v>0)return{b:"#dcfce7",f:"#166534"};if(v>-.1)return{b:"#f3f4f6",f:"#6b7280"};if(v>-.3)return{b:"#fecaca",f:"#991b1b"};return{b:"#dc2626",f:"#fff"};}
+
+function assess(genres,bud,run,mon,bid){
+  const sc={},re={};
+  sc.budget=bud<=5e6?2:bud<=2e7?0:-2;re.budget=bud<=5e6?"Under $5M — sweet spot":bud<=2e7?"Mid-budget":"Over $20M — wrong market";
+  let gS=0;const gN=[];genres.forEach(g=>{const m=GM[g];if(m===undefined)return;if(m>.2){gS+=2;gN.push(`${g} +${m.toFixed(2)}`);}else if(m>0){gS+=1;gN.push(`${g} +${m.toFixed(2)}`);}else{gS-=1;gN.push(`${g} ${m.toFixed(2)}`);}});
+  sc.genre=Math.max(-2,Math.min(2,gS));re.genre=gN.join(", ")||"Unknown";
+  let tS=0;const tN=[];genres.forEach(g=>{if(TM[g]&&mon>=1&&mon<=12){const v=TM[g][mon-1];if(v>.3){tS+=2;tN.push(`${g}+${MO[mon-1]}✓`);}else if(v>0){tS+=1;tN.push(`${g}+${MO[mon-1]}~`);}else if(v>-.2){tN.push(`${g}+${MO[mon-1]}~`);}else{tS-=1;tN.push(`${g}+${MO[mon-1]}✗`);}}});
+  sc.timing=Math.max(-2,Math.min(2,tS));re.timing=tN.join(", ")||"No data";
+  sc.runtime=run>=120?2:run>=100?1:run>=90?0:-1;re.runtime=run>=120?`${run}m — strong`:run>=100?`${run}m — decent`:run>=90?`${run}m — avg`:`${run}m — short`;
+  const hH=genres.includes("Horror"),hC=genres.includes("Comedy"),hA=genres.includes("Action");let hp=false;
+  if(hH&&hC){sc.combo=-2;re.combo="Horror+Comedy — HARD PASS";hp=true;}else if(hH&&hA){sc.combo=-2;re.combo="Horror+Action — HARD PASS";hp=true;}else if(hH){sc.combo=1;re.combo="Horror, no bad combos";}else{sc.combo=0;re.combo="No harmful combo";}
+  sc.cost=bid<=30000?2:bid<=90000?1:bid<=200000?0:-1;re.cost=`CA$${(bid/1000).toFixed(0)}K`;
+  const total=Object.values(sc).reduce((a,b)=>a+b,0);const mx=Object.keys(sc).length*2;let dec,dc;
+  if(hp){dec="PASS";dc=rd;}else if(total>=6){dec="STRONG BID";dc=gn;}else if(total>=3){dec="BID";dc=bl;}else if(total>=0){dec="MARGINAL";dc=am;}else{dec="PASS";dc=rd;}
+  const tips=[];genres.forEach(g=>{if(TM[g]){const v=TM[g];const bI=v.indexOf(Math.max(...v));const cur=mon>=1&&mon<=12?v[mon-1]:0;if(v[bI]>cur+.2)tips.push(`${g} → ${MO[bI]} (+${v[bI].toFixed(2)}) vs ${MO[mon-1]} (${cur>=0?"+":""}${cur.toFixed(2)})`);}});
+  return{sc,re,total,mx,dec,dc,tips,hp};
+}
+
+const PR=[{nm:"Horror/Thriller Oct",t:"The Hollow Dark",g:["Horror","Thriller"],b:3e6,r:108,m:10,c:45000},{nm:"Drama/Romance Sep",t:"Whispers of Autumn",g:["Drama","Romance"],b:12e6,r:88,m:9,c:150000},{nm:"Comedy Jul",t:"Last Call at Luna's",g:["Comedy"],b:5e6,r:115,m:7,c:60000},{nm:"Horror+Comedy Feb",t:"Laugh or Scream",g:["Horror","Comedy"],b:2e6,r:95,m:2,c:40000}];
+
+const Sec=({title,children})=>(<div style={{background:cd,borderRadius:10,padding:"20px 24px",border:`1px solid ${bd}`,boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>{title&&<div style={{fontSize:13,fontWeight:700,color:mt,marginBottom:16,textTransform:"uppercase",letterSpacing:"0.1em"}}>{title}</div>}{children}</div>);
+
+/* ===== MC PROJECTION CHART (SVG) ===== */
+function MCChart(){
+  // Pre-computed from notebook: percentile paths (log scale mapped to SVG coords)
+  // Chart area: x=70..680 (years 0-10), y=30..400 (log scale 10^-1 to 10^4)
+  const W=750,H=430,L=70,R=680,T=30,B=400;
+  const toX=yr=>L+(yr/10)*(R-L);
+  const toY=v=>{if(v<=0)v=0.05;const log=Math.log10(Math.max(v,0.05));const ymin=-1.3,ymax=4;return B-(log-ymin)/(ymax-ymin)*(B-T);};
+
+  // Data from notebook (seed=42, 1000 sims)
+  const curP10=[1,.21,.05,0,0,0,0,0,0,0,0];
+  const curP50=[1,1.59,2.1,2.46,3.5,5.6,6.29,7.96,9.21,7.89,7.8];
+  const curP90=[1,6.97,17.42,45.75,89.99,175.09,374.56,847.34,1427.61,2234.66,3493.92];
+  const recP10=[1,.35,.27,.32,.36,.38,.4,.47,.5,.68,.78];
+  const recP50=[1,1.56,2.36,3.28,5.21,7.66,10.82,16,24.26,38.62,53.23];
+  const recP90=[1,5.31,14.2,32.34,63.72,149.35,281.02,518.98,846.75,1257.3,2596.62];
+
+  const makeBand=(p10,p90)=>{
+    const top=Array.from({length:11},(_,i)=>`${toX(i).toFixed(0)},${toY(p90[i]).toFixed(0)}`).join(" ");
+    const bot=Array.from({length:11},(_,i)=>`${toX(10-i).toFixed(0)},${toY(p10[10-i]).toFixed(0)}`).join(" ");
+    return top+" "+bot;
+  };
+  const makeLine=(p)=>Array.from({length:11},(_,i)=>`${toX(i).toFixed(0)},${toY(p[i]).toFixed(0)}`).join(" ");
+
+  // Grid lines for log scale
+  const gridVals=[0.1,0.2,1,10,100,1000,10000];
+  const gridLabels=["0.1x","0.2x","1x","10x","100x","1,000x","10,000x"];
+
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
+      <defs>
+        <linearGradient id="curGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ef4444" stopOpacity="0.25"/><stop offset="100%" stopColor="#ef4444" stopOpacity="0.05"/></linearGradient>
+        <linearGradient id="recGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#16a34a" stopOpacity="0.25"/><stop offset="100%" stopColor="#16a34a" stopOpacity="0.05"/></linearGradient>
+      </defs>
+
+      {/* Grid */}
+      {gridVals.map((v,i)=>(
+        <g key={v}>
+          <line x1={L} y1={toY(v)} x2={R} y2={toY(v)} stroke={v===1?"#94a3b8":"#e5e7eb"} strokeWidth={v===1?1.5:0.5} strokeDasharray={v===1?"":"4,4"}/>
+          <text x={L-8} y={toY(v)+4} textAnchor="end" fontSize="11" fill="#94a3b8" fontFamily={mn}>{gridLabels[i]}</text>
+        </g>
+      ))}
+
+      {/* Year labels */}
+      {Array.from({length:11},(_,i)=>(
+        <text key={i} x={toX(i)} y={B+20} textAnchor="middle" fontSize="12" fill="#94a3b8" fontFamily={mn}>{i}</text>
+      ))}
+
+      {/* Bankruptcy threshold */}
+      <line x1={L} y1={toY(0.2)} x2={R} y2={toY(0.2)} stroke="#dc2626" strokeWidth="1.5" strokeDasharray="6,4" opacity="0.6"/>
+      <text x={R+4} y={toY(0.2)+4} fontSize="10" fill="#dc2626" fontFamily={mn}>Bankruptcy (0.2x)</text>
+
+      {/* Current strategy band + median */}
+      <polygon points={makeBand(curP10,curP90)} fill="url(#curGrad)" stroke="none"/>
+      <polyline points={makeLine(curP50)} fill="none" stroke="#ef4444" strokeWidth="2.5"/>
+
+      {/* Recommended strategy band + median */}
+      <polygon points={makeBand(recP10,recP90)} fill="url(#recGrad)" stroke="none"/>
+      <polyline points={makeLine(recP50)} fill="none" stroke="#16a34a" strokeWidth="2.5"/>
+
+      {/* Break even line */}
+      <line x1={L} y1={toY(1)} x2={R} y2={toY(1)} stroke="#94a3b8" strokeWidth="1" strokeDasharray="4,4"/>
+
+      {/* Terminal ROI labels */}
+      <text x={R+6} y={toY(53.2)-2} fontSize="16" fill="#16a34a" fontWeight="800" fontFamily={mn}>53.2x</text>
+      <text x={R+6} y={toY(7.8)-2} fontSize="16" fill="#ef4444" fontWeight="800" fontFamily={mn}>7.8x</text>
+
+      {/* Bankruptcy callouts */}
+      <g transform={`translate(${toX(5)},${toY(0.12)})`}>
+        <rect x="-90" y="-14" width="180" height="28" rx="6" fill="#dc2626" opacity="0.1" stroke="#dc2626" strokeWidth="1.5"/>
+        <text textAnchor="middle" y="5" fontSize="13" fill="#dc2626" fontWeight="700" fontFamily={sn}>Current Bankruptcy: 49.5%</text>
+      </g>
+      <g transform={`translate(${toX(7)},${toY(0.55)})`}>
+        <rect x="-95" y="-14" width="190" height="28" rx="6" fill="#16a34a" opacity="0.1" stroke="#16a34a" strokeWidth="1.5"/>
+        <text textAnchor="middle" y="5" fontSize="13" fill="#16a34a" fontWeight="700" fontFamily={sn}>New Bankruptcy: 17.9%</text>
+      </g>
+
+      {/* Legend */}
+      <rect x={L+10} y={T} width="14" height="14" rx="3" fill="#ef4444" opacity="0.3"/><line x1={L+12} y1={T+7} x2={L+22} y2={T+7} stroke="#ef4444" strokeWidth="2.5"/>
+      <text x={L+30} y={T+11} fontSize="12" fill="#64748b" fontFamily={sn}>Current (90% of outcomes)</text>
+      <rect x={L+10} y={T+20} width="14" height="14" rx="3" fill="#16a34a" opacity="0.3"/><line x1={L+12} y1={T+27} x2={L+22} y2={T+27} stroke="#16a34a" strokeWidth="2.5"/>
+      <text x={L+30} y={T+31} fontSize="12" fill="#64748b" fontFamily={sn}>Recommended (90% of outcomes)</text>
+
+      {/* Axis labels */}
+      <text x={W/2} y={H-2} textAnchor="middle" fontSize="13" fill="#64748b" fontFamily={sn}>Year</text>
+      <text x="14" y={H/2} textAnchor="middle" fontSize="13" fill="#64748b" fontFamily={sn} transform={`rotate(-90,14,${H/2})`}>Capital Multiple</text>
+
+      {/* Title */}
+      <text x={W/2} y="16" textAnchor="middle" fontSize="15" fontWeight="700" fill="#1e293b" fontFamily={sn}>10-Year Projections (1,000 Trials · Lévy Stable α=1.259)</text>
+    </svg>
+  );
+}
+
+function Dashboard(){
+  const[tab,setTab]=useState("overview");
+  const[dT,setDT]=useState("The Hollow Dark");
+  const[dG,setDG]=useState(["Horror","Thriller"]);
+  const[dB,setDB]=useState(3e6);
+  const[dR,setDR]=useState(108);
+  const[dM,setDM]=useState(10);
+  const[dC,setDC]=useState(45000);
+  const res=assess(dG,dB,dR,dM,dC);
+  const tabs=[{id:"overview",l:"Strategy"},{id:"timing",l:"Timing"},{id:"criteria",l:"Criteria"},{id:"compare",l:"Current vs New"},{id:"demo",l:"⚡ Demo"}];
+
+  return(
+    <div style={{background:bg,color:tx,minHeight:"100vh",fontFamily:sn,padding:"20px 28px"}}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet"/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <div>
+          <h1 style={{fontSize:26,fontWeight:800,margin:0,fontFamily:mn}}><span style={{color:am}}>levelFILM</span> Acquisition Strategy</h1>
+          <div style={{fontSize:15,color:sb,marginTop:4}}>The distributor that keeps indie cinemas full.</div>
+        </div>
+        <div style={{display:"flex",gap:6}}>{tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"10px 20px",borderRadius:8,border:tab===t.id?"none":`1px solid ${bd}`,cursor:"pointer",fontSize:14,fontWeight:700,background:tab===t.id?am:cd,color:tab===t.id?"#fff":sb}}>{t.l}</button>))}</div>
+      </div>
+
+      {/* KPI BAR */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",background:cd,borderRadius:10,border:`1px solid ${bd}`,marginBottom:16}}>
+        {[{v:"53.2x",l:"Median Terminal",s:"vs 7.8x current",c:gn},{v:"17",l:"Films / Year",s:"7 core + 10 satellite",c:tx},{v:"~18%",l:"Bankruptcy Rate",s:"vs ~50% current",c:am},{v:"58%",l:"Unicorn Capture",s:"vs 54% current",c:bl},{v:"15%",l:"Cash Reserve",s:"CA$135K buffer",c:"#6b7280"}].map((k,i)=>(
+          <div key={k.l} style={{textAlign:"center",padding:"18px 12px",borderRight:i<4?`1px solid ${bd}`:"none"}}>
+            <div style={{fontFamily:mn,fontSize:36,fontWeight:800,color:k.c,lineHeight:1}}>{k.v}</div>
+            <div style={{fontSize:12,color:sb,marginTop:8,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>{k.l}</div>
+            <div style={{fontSize:13,color:mt,marginTop:4}}>{k.s}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ===== STRATEGY ===== */}
+      {tab==="overview"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <Sec title="Genre Allocation — Current vs Recommended">{GD.sort((a,b)=>b.rec-a.rec).map(g=>{const d=g.rec-g.cur;return(<div key={g.g} style={{display:"grid",gridTemplateColumns:"100px 1fr 60px",alignItems:"center",gap:10,marginBottom:8}}><div style={{fontSize:15,fontWeight:600}}>{g.g}</div><div style={{position:"relative",height:22,background:br,borderRadius:4,overflow:"hidden"}}><div style={{position:"absolute",left:0,top:0,height:"50%",width:`${g.cur*2.5}%`,background:"#f87171",minWidth:g.cur>0?3:0}}/><div style={{position:"absolute",left:0,bottom:0,height:"50%",width:`${g.rec*2.5}%`,background:gn,minWidth:g.rec>0?3:0}}/></div><div style={{fontSize:15,fontWeight:700,textAlign:"right",fontFamily:mn,color:d>0?gn:d<0?rd:mt}}>{d>0?"+":""}{d}pp</div></div>);})}
+          <div style={{display:"flex",gap:16,marginTop:8,fontSize:13,color:mt}}><span style={{color:"#f87171"}}>■ Current</span><span style={{color:gn}}>■ Recommended</span></div>
+        </Sec>
+        <Sec title="Genre Performance">{[...GD].sort((a,b)=>b.roi-a.roi).map(g=>(<div key={g.g} style={{display:"grid",gridTemplateColumns:"100px 1fr 90px",alignItems:"center",gap:10,marginBottom:8}}><div style={{fontSize:15,fontWeight:600}}>{g.g}</div><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{height:16,width:`${Math.max(Math.abs(g.roi)*160,5)}px`,background:g.roi>=0?gn:rd,borderRadius:3}}/><span style={{fontFamily:mn,fontWeight:700,fontSize:15,color:g.roi>=0?gn:rd}}>{g.roi>=0?"+":""}{g.roi.toFixed(2)}</span></div><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{height:14,background:br,borderRadius:2,width:50,overflow:"hidden"}}><div style={{height:"100%",width:`${g.draw}%`,background:g.draw>=68?bl:mt,borderRadius:2}}/></div><span style={{fontFamily:mn,fontSize:13,fontWeight:600}}>{g.draw}%</span></div></div>))}<div style={{display:"flex",gap:20,marginTop:8,fontSize:13,color:mt}}><span>Median ROI</span><span>Theatrical viability</span></div></Sec>
+        <Sec title="Barbell Portfolio"><div style={{display:"flex",gap:4,marginBottom:16,height:56,borderRadius:8,overflow:"hidden"}}><div style={{flex:60,background:`linear-gradient(135deg,#1e40af,${bl})`,display:"flex",alignItems:"center",padding:"0 18px"}}><div><div style={{fontSize:18,fontWeight:800,color:"#fff"}}>CORE 60%</div><div style={{fontSize:13,color:"#bfdbfe"}}>7 films @ CA$60K</div></div></div><div style={{flex:40,background:`linear-gradient(135deg,#92400e,${am})`,display:"flex",alignItems:"center",padding:"0 14px"}}><div><div style={{fontSize:18,fontWeight:800,color:"#fff"}}>SAT 40%</div><div style={{fontSize:12,color:"#fef3c7"}}>10 films @ CA$30K</div></div></div></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><div style={{background:"#eff6ff",borderRadius:8,padding:14,borderLeft:`3px solid ${bl}`}}><div style={{fontWeight:700,color:bl,fontSize:14,marginBottom:6}}>Core = Seat-Fillers</div><div style={{color:sb,fontSize:14,lineHeight:1.6}}>Model confidence + genre fit + timing. Reliable weekly programme.</div></div><div style={{background:"#fffbeb",borderRadius:8,padding:14,borderLeft:`3px solid ${am}`}}><div style={{fontWeight:700,color:am,fontSize:14,marginBottom:6}}>Satellite = Lottery Tickets</div><div style={{color:sb,fontSize:14,lineHeight:1.6}}>Low cost + upside genre. One hit covers the tranche.</div></div></div></Sec>
+        <Sec title="Selection Signals"><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}><div><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:8,textTransform:"uppercase"}}>Budget</div>{BD.map(b=>(<div key={b.r} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${br}`}}><span style={{fontSize:15}}>{b.r}</span><span style={{fontSize:15,fontWeight:700,fontFamily:mn,color:b.roi>0?gn:rd}}>{b.roi>0?"+":""}{b.roi.toFixed(2)}</span></div>))}<div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:8,marginTop:16,textTransform:"uppercase"}}>Runtime</div>{RD.map(r=>(<div key={r.r} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${br}`}}><span style={{fontSize:15}}>{r.r}</span><span style={{fontSize:15,fontWeight:700,fontFamily:mn,color:r.roi>0?gn:rd}}>{r.roi>0?"+":""}{r.roi.toFixed(2)}</span></div>))}</div><div><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:8,textTransform:"uppercase"}}>Genre Combos</div>{CM.map(c=>(<div key={c.c} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderBottom:`1px solid ${br}`}}><span style={{fontSize:15}}>{c.c}</span><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:15,fontWeight:700,fontFamily:mn,color:c.ok?gn:rd}}>{c.roi>0?"+":""}{c.roi.toFixed(2)}</span><span style={{fontSize:18,fontWeight:800,color:c.ok?gn:rd}}>{c.ok?"✓":"✗"}</span></div></div>))}<div style={{marginTop:14,background:"#fef2f2",borderRadius:8,padding:"12px 14px",borderLeft:`3px solid ${rd}`,fontSize:14,color:rd,fontWeight:600}}>Horror+Comedy and Horror+Action → always PASS.</div></div></div></Sec>
+      </div>)}
+
+      {/* ===== TIMING ===== */}
+      {tab==="timing"&&(<Sec title="Genre × Month — Median ROI"><div style={{display:"grid",gridTemplateColumns:"100px repeat(12,1fr)",gap:4}}><div/>{MO.map(m=><div key={m} style={{textAlign:"center",fontWeight:700,color:mt,padding:"8px 0",fontSize:14}}>{m}</div>)}</div>{Object.entries(TM).map(([genre,vals])=>{const best=Math.max(...vals);const worst=Math.min(...vals);return(<div key={genre} style={{display:"grid",gridTemplateColumns:"100px repeat(12,1fr)",gap:4,marginBottom:4}}><div style={{fontWeight:700,color:tx,display:"flex",alignItems:"center",fontSize:15}}>{genre}</div>{vals.map((v,i)=>{const h=hc(v);return(<div key={i} style={{background:h.b,borderRadius:6,padding:"10px 2px",textAlign:"center",fontFamily:mn,fontSize:13,fontWeight:700,color:h.f,border:v===best?`2px solid ${am}`:v===worst?`2px solid ${rd}`:"2px solid transparent"}}>{v>0?"+":""}{v.toFixed(2)}</div>);})}</div>);})}<div style={{display:"flex",gap:24,marginTop:16,fontSize:13,color:mt}}><span><span style={{display:"inline-block",width:14,height:14,borderRadius:3,background:"#22c55e",marginRight:6,verticalAlign:"middle"}}/>Positive</span><span><span style={{display:"inline-block",width:14,height:14,borderRadius:3,background:"#dc2626",marginRight:6,verticalAlign:"middle"}}/>Negative</span><span><span style={{display:"inline-block",width:14,height:14,borderRadius:3,border:`2px solid ${am}`,marginRight:6,verticalAlign:"middle"}}/>Best</span><span><span style={{display:"inline-block",width:14,height:14,borderRadius:3,border:`2px solid ${rd}`,marginRight:6,verticalAlign:"middle"}}/>Worst</span></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:16}}><div style={{padding:"14px 18px",background:"#fef2f2",borderRadius:8,borderLeft:`4px solid ${rd}`,fontSize:15,color:rd,fontWeight:600}}>September is the worst month for ALL genres.</div><div style={{padding:"14px 18px",background:"#f0fdf4",borderRadius:8,borderLeft:`4px solid ${gn}`,fontSize:15,color:gn,fontWeight:600}}>Best: Horror Jan · Comedy Jul · Thriller Dec · Drama Dec</div></div></Sec>)}
+
+      {/* ===== CRITERIA ===== */}
+      {tab==="criteria"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><Sec title="5-Criteria Checklist"><div style={{display:"flex",flexDirection:"column",gap:10}}>{[{n:1,r:"Genre: Horror and/or Thriller",d:"70% theatrical viability — highest",c:gn},{n:2,r:"Budget: Under $5M USD",d:"Sweet spot ROI: +0.24 to +0.30",c:gn},{n:3,r:"Runtime: 120+ minutes",d:"77% reach $5M+ revenue",c:gn},{n:4,r:"NOT Horror+Comedy or Horror+Action",d:"These combos destroy value — HARD PASS",c:rd},{n:5,r:"Favourable release window",d:"Genre × month signal ✓",c:am}].map(cr=>(<div key={cr.n} style={{display:"grid",gridTemplateColumns:"40px 1fr",gap:12,background:bg,borderRadius:8,padding:"14px 16px",borderLeft:`4px solid ${cr.c}`}}><div style={{width:34,height:34,borderRadius:"50%",background:cr.c+"18",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:mn,fontWeight:800,fontSize:18,color:cr.c}}>{cr.n}</div><div><div style={{fontWeight:700,fontSize:16}}>{cr.r}</div><div style={{fontSize:14,color:sb,marginTop:4}}>{cr.d}</div></div></div>))}</div></Sec><div style={{display:"flex",flexDirection:"column",gap:16}}><Sec title="Decision Rules">{[{s:"4–5 criteria met",a:"CORE BID",d:"CA$60K",c:gn},{s:"3 criteria + <$2M budget",a:"SATELLITE",d:"CA$30K",c:am},{s:"Criterion 4 violated",a:"HARD PASS",d:"No exceptions",c:rd},{s:"Fewer than 3 criteria",a:"PASS",d:"Doesn't fit",c:"#6b7280"}].map(r=>(<div key={r.a} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:bg,borderRadius:8,marginBottom:6}}><div style={{padding:"6px 14px",borderRadius:6,background:r.c,fontWeight:800,fontSize:13,color:"#fff",fontFamily:mn,whiteSpace:"nowrap"}}>{r.a}</div><div><div style={{fontSize:15,fontWeight:600}}>{r.s}</div><div style={{fontSize:13,color:mt}}>{r.d}</div></div></div>))}</Sec><Sec title="The Customer"><div style={{fontSize:15,color:sb,lineHeight:2.2}}><div><span style={{color:am,fontWeight:700}}>Customer:</span> <span style={{color:tx,fontWeight:600}}>Independent Canadian cinema owner</span></div><div><span style={{color:am,fontWeight:700}}>Problem:</span> <span style={{color:tx}}>"Multiplexes get Marvel. I need content for MY theatre."</span></div><div><span style={{color:am,fontWeight:700}}>levelFILM:</span> <span style={{color:tx}}>17 films/year · 70% theatrical viability genres</span></div><div><span style={{color:am,fontWeight:700}}>Why Horror:</span> <span style={{color:tx}}>Fear is communal. Horror resists streaming.</span></div></div></Sec></div></div>)}
+
+      {/* ===== CURRENT VS NEW ===== */}
+      {tab==="compare"&&(<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <Sec title="10-Year Monte Carlo Projection">
+          <MCChart/>
+        </Sec>
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <Sec title="Monte Carlo Comparison (De Vany & Walls 2004)">
+            <div style={{fontSize:14,color:sb,marginBottom:16}}>1,000 sims × 10 years · α = 1.259 · Infinite variance</div>
+            <div style={{display:"grid",gridTemplateColumns:"auto 1fr 1fr",gap:"10px 20px",fontSize:15}}>
+              <div style={{fontWeight:700,color:mt,borderBottom:`2px solid ${bd}`,paddingBottom:8}}>Metric</div>
+              <div style={{fontWeight:700,color:rd,textAlign:"center",borderBottom:`2px solid ${bd}`,paddingBottom:8}}>Current</div>
+              <div style={{fontWeight:700,color:gn,textAlign:"center",borderBottom:`2px solid ${bd}`,paddingBottom:8}}>Recommended</div>
+              {[["Structure","15 × $60K","7c+10s+reserve"],["Bankruptcy","49.5%","17.9%"],["Profitable","60%","88%"],["Median terminal","7.8x","53.2x"],["P5 worst years","-95%","-78%"]].map(r=>(
+                <React.Fragment key={r[0]}>
+                  <div style={{fontWeight:600,padding:"8px 0",borderBottom:`1px solid ${br}`}}>{r[0]}</div>
+                  <div style={{fontFamily:mn,fontWeight:600,textAlign:"center",padding:"8px 0",borderBottom:`1px solid ${br}`,color:r[0]==="Bankruptcy"?rd:sb}}>{r[1]}</div>
+                  <div style={{fontFamily:mn,fontWeight:600,textAlign:"center",padding:"8px 0",borderBottom:`1px solid ${br}`,color:r[0]==="Bankruptcy"||r[0]==="Profitable"?gn:sb}}>{r[2]}</div>
+                </React.Fragment>
+              ))}
+            </div>
+          </Sec>
+          <Sec title="Growth Path — Bankruptcy Over Time">
+            <div style={{fontSize:14,color:sb,marginBottom:14}}>~18% is Year 1. As capital accumulates:</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 70px",alignItems:"center",background:bg,borderRadius:8,padding:"14px 16px",borderLeft:`4px solid ${rd}`}}>
+                <div><div style={{fontWeight:700,fontSize:15}}>Year 1: Base strategy</div><div style={{fontSize:13,color:sb,marginTop:4}}>7c + 10s + 15% reserve</div></div>
+                <div style={{fontFamily:mn,fontWeight:800,fontSize:22,color:rd,textAlign:"right"}}>~18%</div>
+              </div>
+              <div style={{textAlign:"center",fontSize:16,color:mt}}>↓</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 70px",alignItems:"center",background:bg,borderRadius:8,padding:"14px 16px",borderLeft:`4px solid ${am}`}}>
+                <div><div style={{fontWeight:700,fontSize:15}}>Years 2–4: Grow reserve</div><div style={{fontSize:13,color:sb,marginTop:4}}>Same 17 films. Profits → buffer.</div></div>
+                <div style={{fontFamily:mn,fontWeight:800,fontSize:22,color:am,textAlign:"right"}}>~1%</div>
+              </div>
+              <div style={{textAlign:"center",fontSize:16,color:mt}}>↓</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 70px",alignItems:"center",background:bg,borderRadius:8,padding:"14px 16px",borderLeft:`4px solid ${gn}`}}>
+                <div><div style={{fontWeight:700,fontSize:15}}>Years 5+: Scale with protection</div><div style={{fontSize:13,color:sb,marginTop:4}}>Add films (cap ~50/yr). Median: 994x.</div></div>
+                <div style={{fontFamily:mn,fontWeight:800,fontSize:22,color:gn,textAlign:"right"}}>~13%</div>
+              </div>
+            </div>
+            <div style={{marginTop:14,padding:"12px 16px",background:bg,borderRadius:8,border:`2px solid ${bd}`,fontSize:15,fontWeight:700,textAlign:"center"}}>The reserve is the foundation. Scale is the reward for surviving.</div>
+          </Sec>
+        </div>
+      </div>)}
+
+      {/* ===== DEMO ===== */}
+      {tab==="demo"&&(<div style={{display:"grid",gridTemplateColumns:"380px 1fr",gap:20}}>
+        <Sec title="Film Details">
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>{PR.map(p=>(<button key={p.nm} onClick={()=>{setDT(p.t);setDG(p.g);setDB(p.b);setDR(p.r);setDM(p.m);setDC(p.c);}} style={{padding:"6px 12px",borderRadius:6,border:`1px solid ${bd}`,cursor:"pointer",fontSize:12,fontWeight:600,background:dT===p.t?"#fffbeb":bg,color:dT===p.t?am:sb}}>{p.nm}</button>))}</div>
+          <div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:6,textTransform:"uppercase"}}>Title</div><input value={dT} onChange={e=>setDT(e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${bd}`,fontSize:15,fontFamily:sn,color:tx,background:bg}}/></div>
+          <div style={{marginBottom:14}}><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:6,textTransform:"uppercase"}}>Genres</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{AG.map(g=>(<button key={g} onClick={()=>setDG(p=>p.includes(g)?p.filter(x=>x!==g):[...p,g])} style={{padding:"6px 14px",borderRadius:6,cursor:"pointer",fontSize:13,fontWeight:600,background:dG.includes(g)?bl:bg,color:dG.includes(g)?"#fff":sb,border:`1px solid ${dG.includes(g)?bl:bd}`}}>{g}</button>))}</div></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}><div><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:6,textTransform:"uppercase"}}>Budget (USD)</div><input type="number" value={dB} onChange={e=>setDB(+e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${bd}`,fontSize:15,fontFamily:sn,color:tx,background:bg}}/></div><div><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:6,textTransform:"uppercase"}}>Runtime (min)</div><input type="number" value={dR} onChange={e=>setDR(+e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${bd}`,fontSize:15,fontFamily:sn,color:tx,background:bg}}/></div></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}><div><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:6,textTransform:"uppercase"}}>Release Month</div><select value={dM} onChange={e=>setDM(+e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${bd}`,fontSize:15,fontFamily:sn,color:tx,background:bg}}>{MO.map((m,i)=><option key={m} value={i+1}>{m}</option>)}</select></div><div><div style={{fontSize:12,fontWeight:700,color:mt,marginBottom:6,textTransform:"uppercase"}}>Bid Cost (CAD)</div><input type="number" value={dC} onChange={e=>setDC(+e.target.value)} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${bd}`,fontSize:15,fontFamily:sn,color:tx,background:bg}}/></div></div>
+        </Sec>
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{background:res.dc,borderRadius:12,padding:"22px 28px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:14,color:"rgba(255,255,255,0.8)",fontWeight:600}}>RECOMMENDATION</div><div style={{fontSize:38,fontWeight:800,color:"#fff",fontFamily:mn,marginTop:4}}>{res.dec}</div>{res.hp&&<div style={{fontSize:14,color:"rgba(255,255,255,0.9)",marginTop:6}}>Criterion 4 violated — no exceptions</div>}</div><div style={{textAlign:"right"}}><div style={{fontSize:14,color:"rgba(255,255,255,0.8)",fontWeight:600}}>SCORE</div><div style={{fontSize:38,fontWeight:800,color:"#fff",fontFamily:mn,marginTop:4}}>{res.total>0?"+":""}{res.total} / {res.mx}</div></div></div>
+          <Sec title={"Assessment — "+dT}>{[{k:"budget",l:"Budget"},{k:"genre",l:"Genre"},{k:"timing",l:"Timing"},{k:"runtime",l:"Runtime"},{k:"combo",l:"Combo"},{k:"cost",l:"Bid Cost"}].map(f=>{const sc=res.sc[f.k];const bc=sc>=2?gn:sc>=1?"#4ade80":sc>=0?mt:sc>=-1?"#f87171":rd;return(<div key={f.k} style={{display:"grid",gridTemplateColumns:"80px 90px 1fr",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${br}`}}><div style={{fontSize:15,fontWeight:600}}>{f.l}</div><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{display:"flex",gap:3}}>{[-2,-1,0,1,2].map(v=>(<div key={v} style={{width:12,height:12,borderRadius:3,background:(sc>=0&&v>=0&&v<=sc)||(sc<0&&v<0&&v>=sc)?bc:br}}/>))}</div><span style={{fontFamily:mn,fontWeight:700,fontSize:15,color:bc}}>{sc>0?"+":""}{sc}</span></div><div style={{fontSize:14,color:sb,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{res.re[f.k]}</div></div>);})}</Sec>
+          {res.tips.length>0&&(<Sec title="Timing Tips">{res.tips.map((t,i)=>(<div key={i} style={{padding:"10px 14px",background:"#fffbeb",borderRadius:6,borderLeft:`3px solid ${am}`,fontSize:14,color:"#92400e",fontWeight:600,marginBottom:6}}>💡 {t}</div>))}</Sec>)}
+        </div>
+      </div>)}
+
+      <div style={{marginTop:20,padding:"10px 0",borderTop:`2px solid ${bd}`,display:"flex",justifyContent:"space-between",fontSize:12,color:mt}}>
+        <span>5,210 films · Low-budget: 2,748 · Walk-forward: 2008–2017 · MC: 1,000 sims · Lévy α=1.259</span>
+        <span>Ivey Business School · levelFILM Case W33828</span>
+      </div>
+    </div>
+  );
+}
+ReactDOM.render(React.createElement(Dashboard),document.getElementById("root"));
+</script>
+</body>
+</html>
