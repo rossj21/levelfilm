@@ -221,7 +221,7 @@ function Dashboard(){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>
           <h1 style={{fontSize:26,fontWeight:800,margin:0,fontFamily:mn}}><span style={{color:am}}>levelFILM</span> Acquisition Strategy</h1>
-          <div style={{fontSize:15,color:sb,marginTop:4}}>The distributor that keeps indie cinemas full.</div>
+          <div style={{fontSize:15,color:sb,marginTop:4}}>Keeping Independent Cinema Alive</div>
         </div>
         <div style={{display:"flex",gap:6}}>{tabs.map(t=>(<button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"10px 20px",borderRadius:8,border:tab===t.id?"none":`1px solid ${bd}`,cursor:"pointer",fontSize:14,fontWeight:700,background:tab===t.id?am:cd,color:tab===t.id?"#fff":sb}}>{t.l}</button>))}</div>
       </div>
@@ -317,7 +317,7 @@ function Dashboard(){
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {[
                   {n:1,k:"c1",l:"Genre: Horror/Thriller",pass:res.criteria.c1},
-                  {n:2,k:"c2",l:"Budget: Under $5M",pass:res.criteria.c2},
+                  {n:2,k:"c2",l:"Budget: Under $5M (Core) $2M (Satellite)",pass:res.criteria.c2},
                   {n:3,k:"c3",l:"Runtime: 120+ min",pass:res.criteria.c3},
                   {n:4,k:"c4",l:"Not Horror+Comedy/Action",pass:res.criteria.c4},
                   {n:5,k:"c5",l:"Favourable timing",pass:res.criteria.c5},
